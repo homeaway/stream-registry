@@ -16,6 +16,11 @@
 package com.expediagroup.streamplatform.streamregistry.state.kafka;
 
 import static com.expediagroup.streamplatform.streamregistry.state.internal.EventCorrelator.CORRELATION_ID;
+import static com.expediagroup.streamplatform.streamregistry.state.kafka.KafkaEventReceiver.State.NOT_RUNNING;
+import static com.expediagroup.streamplatform.streamregistry.state.kafka.KafkaEventReceiver.State.ERROR;
+import static com.expediagroup.streamplatform.streamregistry.state.kafka.KafkaEventReceiver.State.CREATED;
+import static com.expediagroup.streamplatform.streamregistry.state.kafka.KafkaEventReceiver.State.PENDING_SHUTDOWN;
+import static com.expediagroup.streamplatform.streamregistry.state.kafka.KafkaEventReceiver.State.RUNNING;
 import static com.expediagroup.streamplatform.streamregistry.state.model.event.Event.LOAD_COMPLETE;
 import static io.confluent.kafka.serializers.KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG;
 import static io.confluent.kafka.serializers.KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG;
@@ -35,8 +40,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import lombok.Builder;
 import lombok.NonNull;
@@ -66,8 +71,7 @@ public class KafkaEventReceiver implements EventReceiver {
   @NonNull private final AvroConverter converter;
   @NonNull private final KafkaConsumer<AvroKey, AvroValue> consumer;
   @NonNull private final ScheduledExecutorService executorService;
-  private volatile boolean shuttingDown = false;
-  private final AtomicBoolean started = new AtomicBoolean(false);
+  private final AtomicReference<State> state = new AtomicReference<>(CREATED);
 
   public KafkaEventReceiver(Config config, EventCorrelator correlator) {
     this(
@@ -85,7 +89,7 @@ public class KafkaEventReceiver implements EventReceiver {
 
   @Override
   public void receive(EventReceiverListener listener) {
-    if(started.getAndSet(true)) {
+    if(state.getAndSet(RUNNING) != CREATED) {
       throw new IllegalStateException("Only a single EventReceiverListener is supported");
     }
     executorService.execute(() -> {
@@ -93,6 +97,7 @@ public class KafkaEventReceiver implements EventReceiver {
         consume(listener);
       } catch (Exception e) {
         log.error("Receiving failed", e);
+        state.set(ERROR);
         throw e;
       }
     });
@@ -126,7 +131,7 @@ public class KafkaEventReceiver implements EventReceiver {
       loaded = true;
     }
 
-    while (!shuttingDown) {
+    while (state.get() == RUNNING) {
       for (ConsumerRecord<AvroKey, AvroValue> record : consumer.poll(Duration.ofMillis(100))) {
         val event = converter.toModel(record.key(), record.value());
         currentOffset.set(record.offset());
@@ -159,9 +164,14 @@ public class KafkaEventReceiver implements EventReceiver {
 
   @Override
   public void close() {
-    shuttingDown = true;
+    state.set(PENDING_SHUTDOWN);
     executorService.shutdown();
     consumer.close();
+    state.set(NOT_RUNNING);
+  }
+
+  public State getState() {
+    return state.get();
   }
 
   static Map<String, Object> consumerConfig(Config config) {
@@ -184,5 +194,13 @@ public class KafkaEventReceiver implements EventReceiver {
     @NonNull String topic;
     @NonNull String schemaRegistryUrl;
     @NonNull String groupId;
+  }
+
+  public enum State {
+    CREATED,
+    RUNNING,
+    ERROR,
+    PENDING_SHUTDOWN,
+    NOT_RUNNING
   }
 }
