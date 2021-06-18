@@ -4,14 +4,38 @@ scalar ObjectNode
 
 input StatusInput {
     agentStatus: ObjectNode!
+    entries: [StatusEntryInput!]
+}
+
+input StatusEntryInput {
+    name: String!
+    state: StatusState!
+    context: ObjectNode!
 }
 
 input StatusQuery {
     descriptionRegex: String
+    nameRegex: String
 }
 
 type Status {
     agentStatus: ObjectNode!
+    entries: [StatusEntry!]
+}
+
+type StatusEntry {
+    name: String!
+    createdTs: String!
+    updatedTs: String!
+    state: StatusState!
+    context: ObjectNode!
+}
+
+enum StatusState {
+    PENDING
+    OK
+    ERROR
+    UNDEFINED
 }
 
 ############ Tag ############
@@ -79,6 +103,8 @@ type Specification {
     type: String!
     configuration: ObjectNode!
     security: [Security!]!
+    createdTs: String!
+    updatedTs: String!
 }
 
 ############ Domain ############

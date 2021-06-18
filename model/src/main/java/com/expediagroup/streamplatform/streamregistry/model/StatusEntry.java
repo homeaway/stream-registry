@@ -13,24 +13,45 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.expediagroup.streamplatform.streamregistry.state.model.status;
+package com.expediagroup.streamplatform.streamregistry.model;
 
 import java.time.Instant;
 
-import lombok.NonNull;
-import lombok.Value;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-@Value
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode
 public class StatusEntry {
-  @NonNull String name;
-  @NonNull ObjectNode value;
-  @NonNull Instant createdTs;
-  @NonNull Instant updatedTs;
-  @NonNull State state;
+  private String name;
+  private ObjectNode value;
+  private Instant createdTs;
+  private Instant updatedTs;
+  private StatusEntry.State state;
+
+  public StatusEntry(
+    String name,
+    ObjectNode value,
+    StatusEntry.State state
+  ) {
+    this(name, value, null, null, state);
+  }
+
+  public ObjectNode getValue() {
+    return value == null ? new ObjectMapper().createObjectNode() : value;
+  }
 
   public enum State {
-    PENDING, OK, ERROR, UNDEFINED
+    PENDING,
+    OK,
+    ERROR,
+    UNDEFINED
   }
 }

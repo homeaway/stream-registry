@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018-2020 Expedia, Inc.
+ * Copyright (C) 2018-2021 Expedia, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,23 +15,25 @@
  */
 package com.expediagroup.streamplatform.streamregistry.model;
 
+import static java.util.Collections.emptyMap;
+import static java.util.Collections.unmodifiableMap;
+
+import java.util.Map;
+
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 @NoArgsConstructor
 @EqualsAndHashCode
 public class Status {
 
-  private ObjectNode objectNode;
+  private Map<String, StatusEntry> entries;
 
-  public Status(ObjectNode objectNode) {
-    this.objectNode = objectNode;
+  public Status(Map<String, StatusEntry> entries) {
+    this.entries = unmodifiableMap(entries);
   }
 
-  public ObjectNode getObjectNode() {
-    return objectNode == null ? new ObjectMapper().createObjectNode() : objectNode;
+  public Map<String, StatusEntry> getEntries() {
+    return entries == null ? emptyMap() : entries;
   }
 }

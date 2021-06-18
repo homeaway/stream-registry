@@ -96,6 +96,13 @@ protocol StreamRegistry {
 
   record AvroStatus {
     AvroObject value;
+    long createdTs = 0;
+    long updatedTs = 0;
+    AvroStatusState state = "UNDEFINED";
+  }
+
+  enum AvroStatusState {
+    PENDING, OK, ERROR, UNDEFINED
   }
 
   record AvroKey {
